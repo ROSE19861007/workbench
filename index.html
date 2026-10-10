@@ -1429,8 +1429,10 @@ function renderQuadrant(){
   const grid = $('quadrantGrid');
   const tasks = collectTasks();
   const buckets = { q1:[], q2:[], q3:[], q4:[] };
+  const doneCnt = { q1:0, q2:0, q3:0, q4:0 };
   for(const t of tasks){
     const q = quadrantOf(t.important, effUrgent(t));
+    if(t.done){ doneCnt[q]++; continue; }   // 已完成不进象限，避免区域越变越长；数据仍在来源模块
     buckets[q].push(t);
   }
   for(const q in buckets){
@@ -1447,14 +1449,14 @@ function renderQuadrant(){
     const open = list.filter(t=>!t.done).length;
     let inner;
     if(list.length === 0){
-      inner = `<div class="q-empty">拖拽任务到此处</div>`;
+      inner = doneCnt[d.q] > 0 ? `<div class="q-empty">✅ 本象限已全部完成</div>` : `<div class="q-empty">拖拽任务到此处</div>`;
     }else{
       inner = list.map(t => taskCardHtml(t)).join('');
     }
     return `<div class="quadrant ${d.cls}" data-quadrant="${d.q}">
       <div class="quadrant-head">
         <span class="qh-name"><span class="tag">${d.q.toUpperCase()}</span>${d.name}</span>
-        <span class="cnt">${open}/${list.length} 项</span>
+        <span class="cnt">${list.length} 项</span>
       </div>
       ${inner}
     </div>`;
