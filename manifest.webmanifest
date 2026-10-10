@@ -2,7 +2,7 @@
   "name": "李洁个人工作台",
   "short_name": "工作台",
   "description": "李洁的个人工作台：学习、项目、家庭事务四象限管理",
-  "start_url": "./index.html",
+  "start_url": "./",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
@@ -19,7 +19,7 @@
       "src": "icon-512.png",
       "sizes": "512x512",
       "type": "image/png",
-      "purpose": "any"
+      "purpose": "any maskable"
     },
     {
       "src": "apple-touch-icon.png",
@@ -27,5 +27,9 @@
       "type": "image/png",
       "purpose": "any"
     }
-  ]
+  ],
+  "id": "./",
+  "launch_handler": {
+    "client_mode": "navigate-existing"
+  }
 }
