@@ -2920,6 +2920,10 @@ async function syncPull(auto){
     if(isGitHubContentsApi(url)){ const j = await res.json(); s = JSON.parse(b64dec(j.content)); }
     else { s = await res.json(); }
     if(!s || !s.categories) throw new Error('云端数据格式不正确');
+    // 安全护栏：云端为空（一个分类都没有）而本地已有内容时，自动拉取不覆盖本地，避免刚导入的数据被清空
+    if(auto && s.categories.length === 0 && state && state.categories && state.categories.length){
+      lastUrlPull = Date.now(); window.__syncStatus = 'synced'; renderSyncInd(); return;
+    }
     if(auto){
       state = ensureStateDefaults(s);
       try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
