@@ -752,6 +752,11 @@ html.device-landscape #chartQuadrantDist svg{ display:block; width:100%; height:
     <button class="btn-new" data-action="quick-add" data-page-node-id="Vs3r9QN6maW9K1WDndO5rR">＋ 新建</button>
   </div>
 </header>
+<div id="syncSetupBar" style="display:none;background:#fff8ef;border-bottom:1px solid #d9c7ad;padding:8px 16px;font-size:13px;color:#8e2323;text-align:center;">
+  ⚠️ 还没配置同步令牌：当前显示的是<b>示例数据</b>，不是你的真实内容。
+  <a href="javascript:void(0)" data-action="goto-sync-setup" style="color:#8e2323;font-weight:700;text-decoration:underline;">去配置（填一次令牌即可）</a>
+  <span data-action="dismiss-setup" style="cursor:pointer;margin-left:10px;color:#9a8a72;">✕</span>
+</div>
 
 <main class="content" data-page-node-id="3YFdn0PHpx91XHLK4BaE02">
 
@@ -1623,6 +1628,7 @@ function renderSyncInd(){
   }
   el.className = 'sync-ind ' + cls;
   $('syncIndText').textContent = txt;
+  try{ const bar = $('syncSetupBar'); if(bar) bar.style.display = (state.sync && state.sync.token) ? 'none' : 'block'; }catch(e){}
 }
 
 /* ---------- 灵感手记 ---------- */
@@ -3025,6 +3031,8 @@ document.addEventListener('click', function(e){
       if(!tk){ toast('请先在上方「访问令牌」里填好令牌并保存'); break; }
       copyText(location.origin + location.pathname + '#tok=' + encodeURIComponent(tk), '已复制带令牌链接：另一台设备打开即自动配置，无需手输'); break;
     }
+    case 'goto-sync-setup': showView('settings'); setTimeout(()=>{ const s=$('syncSection'); if(s) s.scrollIntoView({behavior:'smooth',block:'start'}); },60); break;
+    case 'dismiss-setup': { const b=$('syncSetupBar'); if(b) b.style.display='none'; break; }
 
     case 'toggle-category':
       state.categories[arg].enabled = state.categories[arg].enabled === false ? true : false;
