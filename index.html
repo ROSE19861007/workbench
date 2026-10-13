@@ -1069,6 +1069,7 @@ function ensureStateDefaults(s){
   if(!s || !s.categories) return defaultState();
   if(!s.version) s.version = 2;
   if(!s.quadrantTasks) s.quadrantTasks = [];
+  applyRecurrence(s);
   if(!s.inspirationNotes) s.inspirationNotes = [];
   if(!s.sync) s.sync = { url:'', token:'', lastSync:null };
   return s;
@@ -1344,6 +1345,27 @@ function quadrantOf(important, urgent){
   return 'q4';                            /* 不重要 · 不紧急 */
 }
 
+/* 月度循环任务：repeat:'monthly' 的任务，due 自动滚到下一个 repeatDay（默认取 due 的日）。
+   标记完成后，到次月自动翻篇，卡片回到象限显示下个发薪日。 */
+function applyRecurrence(s){
+  try{
+    if(!s || !s.quadrantTasks) return false;
+    const now = new Date();
+    const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+    const fmt = d => d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+    let changed = false;
+    for(const t of s.quadrantTasks){
+      if(t.repeat !== 'monthly') continue;
+      const day = (t.repeatDay && t.repeatDay >= 1 && t.repeatDay <= 31) ? t.repeatDay
+                : (t.due ? parseInt(t.due.slice(8,10),10) : 10);
+      let d = new Date(today.getFullYear(), today.getMonth(), day);
+      if(d < today) d = new Date(today.getFullYear(), today.getMonth()+1, day);
+      const ds = fmt(d);
+      if(t.due !== ds){ t.due = ds; if(t.done) t.done = false; changed = true; }
+    }
+    return changed;
+  }catch(e){ return false; }
+}
 /* ---------- 更新任务字段 ---------- */
 function setFieldInItems(items, id, field, value){
   for(const n of items){
@@ -3405,9 +3427,12 @@ async function init(){
   // 配置同步 URL 时，打开即自动拉取一次
   if(state.sync && state.sync.url){ urlAutoPull(true); }
   // 自动刷新：每 30 秒拉一次云端；切回前台 / 重新聚焦时立即拉一次
-  setInterval(() => { autoPull(); retryFailedPush(); urlAutoPull(false); reminderCheck(); }, 30000);
-  document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible'){ autoPull(); retryFailedPush(); urlAutoPull(false); reminderCheck(); } });
-  window.addEventListener('focus', () => { autoPull(); retryFailedPush(); urlAutoPull(false); reminderCheck(); });
+  setInterval(() => { autoPull(); retryFailedPush(); urlAutoPull(false); reminderCheck();
+    if(applyRecurrence(state)){ saveState(); renderAll(); } }, 30000);
+  document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible'){ autoPull(); retryFailedPush(); urlAutoPull(false); reminderCheck();
+    if(applyRecurrence(state)){ saveState(); renderAll(); } } });
+  window.addEventListener('focus', () => { autoPull(); retryFailedPush(); urlAutoPull(false); reminderCheck();
+    if(applyRecurrence(state)){ saveState(); renderAll(); } });
   requestReminderPermission();
   reminderCheck();
   // 首次用户交互解锁音频（Web Audio 需手势才能出声；点任意处/触摸/按键即解锁）
