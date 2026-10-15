@@ -1457,8 +1457,9 @@ function renderQuadrant(){
     if(t.done){ doneCnt[q]++; continue; }   // 已完成不进象限，避免区域越变越长；数据仍在来源模块
     buckets[q].push(t);
   }
+  // 象限内任务按截止日期从近到远排序（无日期排最后）
   for(const q in buckets){
-    buckets[q].sort((a,b) => (a.done===b.done ? 0 : a.done?1:-1));
+    buckets[q].sort((a,b) => daysUntil(a.due) - daysUntil(b.due));
   }
   const defs = [
     { q:'q1', name:'重要 · 紧急', cls:'q1' },
@@ -2439,23 +2440,43 @@ function reminderBeep(){
 function reminderKey(t){ return 'wb_reminded_' + t.id + '_' + (t.due||'') + '_' + (t.dueTime||''); }
 function reminderNotify(t){
   const lead = t.remindLead || 5;
-  const msg = '⏰ 课程提醒：' + (t.title||'课程') + ' 将在约' + lead + '分钟后开始';
+  const msg = '⏰ 提醒：' + (t.title||'事项') + ' 将在约' + lead + '分钟后开始';
   if('Notification' in window && Notification.permission === 'granted'){ try{ new Notification(msg); }catch(e){} }
   toast(msg, 6000);
 }
+/* 天数级提前提醒文案（如发工资提前 N 天） */
+function reminderNotifyDays(t, dist){
+  const msg = '⏰ 提前提醒：' + (t.title||'事项') + ' 还有 ' + dist + ' 天（' + (t.due||'') + (t.dueTime?(' '+t.dueTime):'') + '）';
+  if('Notification' in window && Notification.permission === 'granted'){ try{ new Notification(msg); }catch(e){} }
+  toast(msg, 8000);
+}
+
 function reminderCheck(){
   try{
-    const tasks = collectTasks().filter(x => x.due && x.dueTime && x.remind !== false);
     const now = Date.now();
+    const today0 = new Date(todayStr()+'T00:00:00').getTime();
+    const tasks = collectTasks().filter(x => x.due);
     for(const t of tasks){
       const due = new Date((t.due+'T'+(t.dueTime||'09:00')+':00')).getTime();
       if(isNaN(due)) continue;
-      const lead = (t.remindLead || 5) * 60 * 1000;
-      const diff = due - now;
-      if(diff > 0 && diff <= lead){
-        const k = reminderKey(t);
-        if(!localStorage.getItem(k)){ localStorage.setItem(k,'1'); reminderBeep(); reminderNotify(t); }
-      } else if(diff < -86400000 && localStorage.getItem(k)){ localStorage.removeItem(k); }
+      // 分钟级临近提醒（dueTime 前 remindLead 分钟弹出）
+      if(t.remind !== false && t.dueTime){
+        const lead = (t.remindLead || 5) * 60 * 1000;
+        const diff = due - now;
+        if(diff > 0 && diff <= lead){
+          const k = reminderKey(t);
+          if(!localStorage.getItem(k)){ localStorage.setItem(k,'1'); reminderBeep(); reminderNotify(t); }
+        } else if(diff < -86400000 && localStorage.getItem(k)){ localStorage.removeItem(k); }
+      }
+      // 天数级提前提醒（如发工资：每月 10 号前 remindLeadDays 天弹出）
+      if(t.remindLeadDays && t.remindLeadDays > 0){
+        const due0 = new Date(t.due+'T00:00:00').getTime();
+        const dist = Math.round((due0 - today0)/86400000);
+        const k = 'wb_lead_' + t.id + '_' + t.due;
+        if(dist >= 0 && dist <= t.remindLeadDays){
+          if(!localStorage.getItem(k)){ localStorage.setItem(k,'1'); reminderBeep(); reminderNotifyDays(t, dist); }
+        } else if(dist < 0 && localStorage.getItem(k)){ localStorage.removeItem(k); }
+      }
     }
   }catch(e){}
 }
