@@ -1455,6 +1455,11 @@ function renderQuadrant(){
   for(const t of tasks){
     const q = quadrantOf(t.important, effUrgent(t));
     if(t.done){ doneCnt[q]++; continue; }   // 已完成不进象限，避免区域越变越长；数据仍在来源模块
+    // P17: 月度循环任务平时隐藏，提前 remindLeadDays 天才显示在象限（避免一直占着紧急格）
+    if(t.repeat === 'monthly' && t.remindLeadDays && t.remindLeadDays > 0){
+      const du = daysUntil(t.due);
+      if(typeof du === 'number' && du > t.remindLeadDays) continue;   // 还没到提前窗口，先藏起来
+    }
     buckets[q].push(t);
   }
   // 象限内任务按截止日期从近到远排序（无日期排最后）
