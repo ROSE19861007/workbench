@@ -1161,6 +1161,17 @@ let modalCtx = null;
 let confirmCb = null;
 let dragTaskId = null;
 
+/* P19: 令牌双保险——除 localStorage 外再存一份到 cookie，重启/缓存被清后仍能自动找回 */
+function readTokenCookie(){
+  try{ const m = document.cookie.match(/(?:^|; )wb_sync_token=([^;]+)/); return m ? decodeURIComponent(m[1]) : ''; }catch(e){ return ''; }
+}
+function writeTokenCookie(tok){
+  try{
+    if(tok){ document.cookie = 'wb_sync_token=' + encodeURIComponent(tok) + ';path=/;max-age=31536000;samesite=strict'; }
+    else { document.cookie = 'wb_sync_token=;path=/;max-age=0'; }
+  }catch(e){}
+}
+
 function loadState(){
   try{
     const raw = localStorage.getItem(STORAGE_KEY);
@@ -1168,11 +1179,14 @@ function loadState(){
       const s = JSON.parse(raw);
       if(s && s.categories && s.version){
         if(!s.inspirationNotes) s.inspirationNotes = [];
+        if(!s.sync || !s.sync.token){ const ck = readTokenCookie(); if(ck){ s.sync = s.sync||{}; s.sync.token = ck; } }
         return s;
       }
     }
   }catch(e){}
-  return defaultState();
+  const d = defaultState();
+  const ck0 = readTokenCookie(); if(ck0){ d.sync = d.sync||{}; d.sync.token = ck0; }
+  return d;
 }
 function saveState(){
   try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
@@ -2983,6 +2997,7 @@ async function syncPull(auto){
 function saveSyncConfig(){
   state.sync.url = $('syncUrl').value.trim();
   state.sync.token = $('syncToken').value.trim();
+  writeTokenCookie(state.sync.token);
   saveState(); renderSyncInd();
   toast(state.sync.url ? '同步配置已保存' : '已清空同步配置（降级为本地导出）');
 }
@@ -3418,6 +3433,8 @@ window.__WORKBENCH_SYNC__ = {
 
 /* 初始化 */
 async function init(){
+  // P18: 申请持久化存储，避免重启后 localStorage 被回收导致令牌丢失、工作台变空
+  try{ if(navigator.storage && navigator.storage.persist){ navigator.storage.persist().catch(function(){}); } }catch(e){}
   renderAll();
   showView('home');
   // 后台从云端拉取最新数据（本地缓存兜底，离线可用）
@@ -3442,6 +3459,7 @@ async function init(){
     if(hm && hm[1]){
       state.sync = state.sync || {};
       state.sync.token = decodeURIComponent(hm[1]);
+      writeTokenCookie(state.sync.token);
       try{ history.replaceState(null, '', location.pathname + location.search); }catch(e){}
     }
   }catch(e){}
