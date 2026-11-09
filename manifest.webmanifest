@@ -1,8 +1,8 @@
 {
   "name": "李洁个人工作台",
-  "short_name": "工作台",
+  "short_name": "工作台·新",
   "description": "李洁的个人工作台：学习、项目、家庭事务四象限管理",
-  "start_url": "./",
+  "start_url": "./?v=20261109a",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
@@ -28,8 +28,5 @@
       "purpose": "any"
     }
   ],
-  "id": "./",
-  "launch_handler": {
-    "client_mode": "navigate-existing"
-  }
+  "id": "./"
 }
