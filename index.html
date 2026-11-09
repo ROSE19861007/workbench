@@ -5,7 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" data-page-node-id="wGxn1slTdmwQxw26PH5GGU">
 <meta name="theme-color" content="#f4eee6" data-page-node-id="xFYeSCAUC1efPGy2mkeebv">
 <meta name="apple-mobile-web-app-capable" content="yes" data-page-node-id="J2yZir8SwDB4B9yrDSE5Vc">
-<meta name="apple-mobile-web-app-title" content="李洁工作台" data-page-node-id="z9cvPBjFu7JMhDru2Wrwk0">
+<meta name="apple-mobile-web-app-title" content="工作台·新" data-page-node-id="z9cvPBjFu7JMhDru2Wrwk0">
 <meta name="apple-mobile-web-app-status-bar-style" content="default" data-page-node-id="2bI5XiELjqY7SdemIrK9g2">
 <link rel="manifest" href="manifest.webmanifest" data-page-node-id="ZIyIOwKNGPYDWbx5ZHuL7y">
 <link rel="icon" type="image/png" sizes="192x192" href="icon-192.png" data-page-node-id="ObHvHNfbqFJyQy1uu3DeeA">
@@ -757,6 +757,8 @@ html.device-landscape #chartQuadrantDist svg{ display:block; width:100%; height:
   <a href="javascript:void(0)" data-action="goto-sync-setup" style="color:#8e2323;font-weight:700;text-decoration:underline;">去配置（填一次令牌即可）</a>
   <span data-action="dismiss-setup" style="cursor:pointer;margin-left:10px;color:#9a8a72;">✕</span>
 </div>
+<div id="versionBar" style="display:none;background:#fff3cd;border-bottom:1px solid #d9c7ad;padding:8px 16px;font-size:13px;color:#7a5b16;text-align:center;">🔄 工作台有新版本，<a href="javascript:void(0)" data-action="wb-reload" style="color:#7a5b16;font-weight:700;text-decoration:underline;">点此更新</a></div>
+<div id="pendingBar" style="display:none;background:#fff8e1;border-bottom:1px solid #d9c7ad;padding:8px 16px;font-size:13px;color:#8e2323;text-align:center;">本机改动待同步（<b id="pendingCnt">0</b> 项），照常可编辑；联网或扫码后自动补推。<a href="javascript:void(0)" data-action="wb-diag" style="margin-left:8px;color:#8e2323;text-decoration:underline;">诊断</a></div>
 
 <main class="content" data-page-node-id="3YFdn0PHpx91XHLK4BaE02">
 
@@ -865,6 +867,8 @@ html.device-landscape #chartQuadrantDist svg{ display:block; width:100%; height:
         <button class="btn small" data-action="sync-push" data-page-node-id="tWd9EaL4msGzTQij8KEg3E">推送到云端</button>
         <button class="btn small" data-action="sync-pull" data-page-node-id="b4C35XNdUK575g7Xh7gYWy">从云端拉取</button>
         <button class="btn small" data-action="copy-state" data-page-node-id="fwtMQhV7gY9V9Pm06xstFL">复制状态 JSON</button>
+        <button class="btn small" data-action="wb-diag">诊断信息</button>
+        <button class="btn small" data-action="wb-rollback">回滚到上一版</button>
       </div>
       <div class="note-hint" id="syncNote" data-page-node-id="AgMUGXs9ThFVOOSkzm5TL7">说明：数据默认存在本机浏览器 localStorage，电脑与手机各自独立、不会自动同步。<b data-page-node-id="OB78nSmFeaPvMfKvxrQxFH">百度网盘无法被网页直接读写</b>（浏览器跨域 + 需网盘授权），但可用「导出 JSON → 存百度网盘 → 手机下载 → 导入」的半自动流程跨设备同步；或在上方填「同步 URL + 访问令牌」对接 GitHub 私有仓库（例如 <code>https://api.github.com/repos/你的名/仓库/contents/workbench-state.json</code>）。配置后电脑/手机打开即自动互相同步，无需手动导出导入。</div>
     </div>
@@ -1057,6 +1061,217 @@ function effUrgent(t){ return !!t.urgent || isAutoUrgent(t); }
 function isTouch(){ return ('ontouchstart' in window) || navigator.maxTouchPoints > 0; }
 
 const STORAGE_KEY = 'wb_personal_workbench_v2';
+/* ===== P20-P24 (2026-11-09) 根治「界面消失」：令牌与界面解耦 ===== */
+const BUILD_NO = '20261109a';
+const GOOD_KEY = 'wb_last_good_state_v1';
+const META_KEY = 'wb_local_meta_v1';
+const PREV_KEY = 'wb_prev_state_v1';
+window.__offlineMode = false;
+window.__demoMode = false;
+window.__pendingSync = 0;
+window.__versionSeen = 0;
+window.__persistOK = null;
+window.__cloudCount = null;
+
+function wbEl(id){ return document.getElementById(id); }
+function wbCount(s){ try{ return ((s && s.quadrantTasks) || []).length; }catch(e){ return 0; } }
+function wbMeta(){ try{ return JSON.parse(localStorage.getItem(META_KEY) || '{}') || {}; }catch(e){ return {}; } }
+function wbSetMeta(m){ try{ localStorage.setItem(META_KEY, JSON.stringify(m)); }catch(e){} }
+function wbBackupUrl(){ try{ return DEFAULT_SYNC_URL.replace(/workbench-state\.json$/, 'workbench-state.backup.json'); }catch(e){ return ''; } }
+
+/* IndexedDB 第二份快照：与 localStorage 不同 API，浏览器「仅清缓存」时可幸存 */
+function wbIDB(){
+  try{
+    return new Promise(function(resolve){
+      const rq = indexedDB.open('wb_workbench_safe', 1);
+      rq.onupgradeneeded = function(){ try{ rq.result.createObjectStore('kv'); }catch(e){} };
+      rq.onsuccess = function(){ resolve(rq.result); };
+      rq.onerror = function(){ resolve(null); };
+    });
+  }catch(e){ return Promise.resolve(null); }
+}
+function wbIDBPut(obj){
+  wbIDB().then(function(db){ if(!db) return; try{ db.transaction('kv','readwrite').objectStore('kv').put(obj,'good'); }catch(e){} }).catch(function(){});
+}
+function wbIDBGet(){
+  return wbIDB().then(function(db){ return new Promise(function(resolve){
+    if(!db) return resolve(null);
+    try{ const rq = db.transaction('kv','readonly').objectStore('kv').get('good');
+      rq.onsuccess = function(){ resolve(rq.result || null); };
+      rq.onerror = function(){ resolve(null); };
+    }catch(e){ resolve(null); }
+  }); }).catch(function(){ return null; });
+}
+
+/* 只在「真实数据」时记录快照；示例态绝不写入，避免把空的记成好的 */
+function rememberGood(s){
+  try{
+    if(!s || !s.categories || window.__demoMode) return;
+    const clean = JSON.parse(JSON.stringify(s));
+    if(clean.sync) clean.sync.token = '';
+    localStorage.setItem(GOOD_KEY, JSON.stringify(clean));
+    const m = wbMeta();
+    m.maxTaskCount = Math.max(m.maxTaskCount || 0, wbCount(s));
+    m.lastGoodAt = new Date().toISOString();
+    m.buildNo = BUILD_NO;
+    wbSetMeta(m);
+    wbIDBPut(clean);
+  }catch(e){}
+}
+function restoreGood(){
+  try{ const g = JSON.parse(localStorage.getItem(GOOD_KEY) || 'null');
+    if(g && g.categories) return JSON.parse(JSON.stringify(g)); }catch(e){}
+  return null;
+}
+/* P23 核心闸门：本机异常空态一律不许自动推送 */
+function safeToAutoPush(){
+  if(window.__demoMode) return false;
+  const m = wbMeta(), n = wbCount(state);
+  const catsEmpty = Object.values(state.categories || {}).every(function(c){ return !c || !(c.items || []).length; });
+  return !((m.maxTaskCount || 0) >= 5 && (n === 0 || (n < m.maxTaskCount / 3 && catsEmpty)));
+}
+function renderPendingBar(){
+  try{
+    const b = wbEl('pendingBar'); if(!b) return;
+    const n = window.__pendingSync;
+    b.style.display = (n > 0 && !(state.sync && state.sync.token)) ? 'block' : 'none';
+    const c = wbEl('pendingCnt'); if(c) c.textContent = n;
+  }catch(e){}
+}
+function markPending(){ window.__pendingSync++; renderPendingBar(); }
+function clearPending(){ window.__pendingSync = 0; renderPendingBar(); }
+/* P23：正在编辑时跳过自动拉取，避免另一端推送把输入冲掉 */
+function wbModalOpen(){
+  return ['modalOverlay','confirmOverlay','chartOverlay','scheduleLightbox'].some(function(id){
+    const el = wbEl(id); return el && !el.classList.contains('hidden');
+  });
+}
+/* P23：PUT 前读云端条数 + 留一份上一版备份（本地必成，云端 best-effort） */
+async function wbCloudGuard(token, silent){
+  try{
+    const g = await fetch(wbBackupUrl().replace('workbench-state.backup.json','workbench-state.json'),
+      { headers: { 'Authorization':'Bearer '+token, 'Accept':'application/vnd.github+json' }, cache:'no-store' });
+    if(!g.ok) return true;
+    const j = await g.json();
+    let cloud = null; try{ cloud = JSON.parse(b64dec(j.content)); }catch(e){}
+    const cc = wbCount(cloud), lc = wbCount(state);
+    window.__cloudCount = cc;
+    if(cloud){
+      try{ localStorage.setItem(PREV_KEY, JSON.stringify(cloud)); }catch(e){}
+      wbBackupCloud(token, j.content);
+    }
+    if(silent && lc <= 2 && cc >= 5){
+      window.__syncStatus = 'offline'; renderSyncInd();
+      toast('本机数据异常为空（云端还有 ' + cc + ' 条），已阻止覆盖；请点「从云端恢复」');
+      return false;
+    }
+  }catch(e){}
+  return true;
+}
+function wbBackupCloud(token, content){
+  try{
+    const last = parseInt(localStorage.getItem('wb_last_backup_at') || '0', 10);
+    if(Date.now() - last < 30*60*1000) return;   // 30 分钟节流，避免刷屏提交
+    localStorage.setItem('wb_last_backup_at', String(Date.now()));
+    const u = wbBackupUrl(); if(!u) return;
+    const h = { 'Authorization':'Bearer '+token, 'Accept':'application/vnd.github+json', 'Content-Type':'application/json' };
+    fetch(u, { headers:{ 'Authorization':'Bearer '+token, 'Accept':'application/vnd.github+json' } })
+      .then(function(r){ return r.ok ? r.json() : null; })
+      .then(function(j){
+        const body = { message:'workbench backup ' + new Date().toISOString(), content: String(content).replace(/\s/g,'') };
+        if(j && j.sha) body.sha = j.sha;
+        return fetch(u, { method:'PUT', headers:h, body:JSON.stringify(body) });
+      }).catch(function(){});
+  }catch(e){}
+}
+function wbRollback(){
+  try{
+    const raw = localStorage.getItem(PREV_KEY);
+    if(!raw){ toast('本机还没有上一版备份'); return; }
+    showConfirm('回滚到上一版？', '用上次推送前的云端快照覆盖本机，并推送到云端。', function(){
+      try{
+        const s = JSON.parse(raw), keep = (state.sync && state.sync.token) || '';
+        state = ensureStateDefaults(s);
+        state.sync = state.sync || {}; state.sync.url = DEFAULT_SYNC_URL;
+        if(keep) state.sync.token = keep;
+        saveState(); renderAll(); syncPush(false); toast('已回滚并推送');
+      }catch(e){ toast('回滚失败：' + e.message); }
+    });
+  }catch(e){}
+}
+function wbRestoreCloud(){
+  if(!state.sync || !state.sync.token){ toast('请先扫恢复二维码 / 打开带 #tok= 的链接配好令牌'); return; }
+  syncPull(false);
+}
+/* P21：版本自检。version.json 变化 → 黄条提示，连续两次且前台自动刷新 */
+async function wbCheckVersion(){
+  try{
+    const r = await fetch('version.json?t=' + Date.now(), { cache:'no-store' });
+    if(!r.ok) return;
+    const j = await r.json();
+    if(j.buildNo && j.buildNo !== BUILD_NO){
+      const bar = wbEl('versionBar'); if(bar) bar.style.display = 'block';
+      window.__versionSeen++;
+      if(window.__versionSeen >= 2 && document.visibilityState === 'visible' && !wbModalOpen()) location.reload(true);
+    } else { window.__versionSeen = 0; const bar = wbEl('versionBar'); if(bar) bar.style.display = 'none'; }
+  }catch(e){}
+}
+/* P24：诊断面板（以后报障截一张图即可定位） */
+function wbShowDiag(){
+  try{
+    const m = wbMeta();
+    let src = '无';
+    if(state.sync && state.sync.token) src = (readTokenCookie() === state.sync.token) ? 'localStorage + cookie' : 'localStorage';
+    else if(readTokenCookie()) src = 'cookie（未生效）';
+    const lines = [
+      '版本 BUILD_NO：' + BUILD_NO,
+      '当前网址：' + location.host + location.pathname,
+      '入口判定：' + (location.host.indexOf('github.io') >= 0 ? 'GitHub Pages（正确）' : '⚠️ 非 Pages 地址'),
+      '令牌来源：' + src,
+      '数据档位：' + (window.__demoMode ? '全新设备示例' : (window.__offlineMode ? '离线缓存（可编辑）' : '在线数据')),
+      '本地任务条数：' + wbCount(state) + ' / 云端：' + (window.__cloudCount === null ? '未读取' : window.__cloudCount),
+      '历史最大条数：' + (m.maxTaskCount || 0),
+      '待同步改动：' + window.__pendingSync,
+      '上次真实数据：' + (m.lastGoodAt || '无'),
+      '上次同步：' + ((state.sync && state.sync.lastSync) || '无'),
+      'persist()：' + (window.__persistOK === null ? '未申请' : String(window.__persistOK))
+    ];
+    let box = wbEl('wbDiagBox');
+    if(!box){
+      box = document.createElement('div'); box.id = 'wbDiagBox';
+      box.setAttribute('style','position:fixed;z-index:99999;left:12px;right:12px;top:60px;max-height:70vh;overflow:auto;background:#fffaf2;color:#4a3626;border:2px solid #8e2323;border-radius:10px;padding:14px 16px;box-shadow:0 8px 30px rgba(0,0,0,.28);');
+      document.body.appendChild(box);
+    }
+    box.innerHTML = '<div style="font-weight:700;color:#8e2323;margin-bottom:8px;">工作台诊断 <span data-action="wb-diag-close" style="float:right;cursor:pointer;">✕</span></div><pre style="white-space:pre-wrap;margin:0;font:13px/1.7 monospace;">' + lines.join('\n') + '</pre>';
+    box.style.display = 'block';
+  }catch(e){}
+}
+function wbInitExtras(){
+  try{
+    if(navigator.storage && navigator.storage.persist){
+      navigator.storage.persist().then(function(ok){
+        window.__persistOK = !!ok;
+        if(!ok){ try{ toast('本设备可能自动清理网站数据，建议在设置页导出 JSON 备份'); }catch(e){} }
+      }).catch(function(){ window.__persistOK = false; });
+    }
+  }catch(e){}
+  // 示例态但 IndexedDB 里还有真实快照 → 自动救回来（Chrome「仅清缓存」场景）
+  if(window.__demoMode){
+    wbIDBGet().then(function(g){
+      if(g && g.categories && window.__demoMode){
+        const ck = readTokenCookie(); if(ck){ g.sync = g.sync || {}; g.sync.token = ck; }
+        state = ensureStateDefaults(g);
+        window.__demoMode = false; window.__offlineMode = true;
+        try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
+        rememberGood(state); renderAll(); renderSyncInd(); toast('已从本机备份恢复上次数据');
+      }
+    }).catch(function(){});
+  }
+  renderSyncInd(); renderPendingBar(); wbCheckVersion();
+  document.addEventListener('visibilitychange', function(){ if(document.visibilityState === 'visible') wbCheckVersion(); });
+  window.addEventListener('focus', wbCheckVersion);
+}
+/* ===== P20-P24 助手结束 ===== */
 /* ===== 云端同步（资料库数据表）：本段是数据同步核心，改视觉时请勿改动本段 ===== */
 const DB_ID = 'hwxijTj1L9jCa0WOjNrcle';   // 资料库数据表 ID（硬编码）
 let recordId = null;   // 云端单条记录 ID（运行时获取）
@@ -1180,10 +1395,22 @@ function loadState(){
       if(s && s.categories && s.version){
         if(!s.inspirationNotes) s.inspirationNotes = [];
         if(!s.sync || !s.sync.token){ const ck = readTokenCookie(); if(ck){ s.sync = s.sync||{}; s.sync.token = ck; } }
+        try{ window.__demoMode = false; rememberGood(s); }catch(e){}
         return s;
       }
     }
   }catch(e){}
+  // P22: 本地被清 → 优先恢复最后一次真实快照（照常可编辑），绝不静默换成示例数据
+  try{
+    const good = restoreGood();
+    if(good){
+      const ck = readTokenCookie(); if(ck){ good.sync = good.sync||{}; good.sync.token = ck; }
+      window.__offlineMode = true;
+      return good;
+    }
+  }catch(e){}
+  // P22: 只有真·首次安装、从未加载过真实数据才显示示例，且明确标注
+  window.__demoMode = true;
   const d = defaultState();
   const ck0 = readTokenCookie(); if(ck0){ d.sync = d.sync||{}; d.sync.token = ck0; }
   return d;
@@ -1191,6 +1418,8 @@ function loadState(){
 function saveState(){
   try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
   catch(e){ toast('保存失败：存储空间不足'); }
+  try{ if(state && state.categories) rememberGood(state); }catch(e){}
+  try{ if(!state.sync || !state.sync.token) markPending(); }catch(e){}
   if(window.__WORKBENCH_SYNC__ && window.__WORKBENCH_SYNC__.onChange){
     try{ window.__WORKBENCH_SYNC__.onChange(state); }catch(e){}
   }
@@ -1671,8 +1900,31 @@ function renderSyncInd(){
     cls = '';
   }
   el.className = 'sync-ind ' + cls;
+  // P22/P24: 三档状态：在线数据 / 离线缓存可编辑 / 示例数据
+  if(window.__demoMode){ txt = '示例数据'; cls = 'offline'; }
+  else if(!state.sync || !state.sync.token){
+    txt = window.__pendingSync > 0 ? ('离线·待同步' + window.__pendingSync) : '离线缓存'; cls = 'offline';
+  }
+  el.className = 'sync-ind ' + cls;
   $('syncIndText').textContent = txt;
-  try{ const bar = $('syncSetupBar'); if(bar) bar.style.display = (state.sync && state.sync.token) ? 'none' : 'block'; }catch(e){}
+  try{ el.title = '工作台 ' + BUILD_NO + ' · 设置页可打开诊断信息'; }catch(e){}
+  try{
+    const bar = $('syncSetupBar');
+    if(bar){
+      const noTok = !(state.sync && state.sync.token);
+      bar.style.display = noTok ? 'block' : 'none';
+      if(noTok){
+        const m = wbMeta();
+        const when = m.lastGoodAt ? ('截至 ' + m.lastGoodAt.slice(0,10)) : '仍在云端';
+        const what = window.__demoMode ? '全新设备示例数据' : '上次缓存的真实数据';
+        bar.innerHTML = '⚠️ 现在显示的是<b>' + what + '</b>（' + when + '），你的真实内容没有丢。'
+          + ' <a href="javascript:void(0)" data-action="wb-restore-cloud" style="color:#8e2323;font-weight:700;text-decoration:underline;">一键恢复</a>'
+          + ' <a href="javascript:void(0)" data-action="wb-diag" style="color:#8e2323;text-decoration:underline;">诊断</a>'
+          + ' <span data-action="dismiss-setup" style="cursor:pointer;margin-left:10px;color:#9a8a72;">✕</span>';
+      }
+    }
+  }catch(e){}
+  renderPendingBar();
 }
 
 /* ---------- 灵感手记 ---------- */
@@ -2911,13 +3163,27 @@ function scheduleUrlPush(){
   urlPushPending = true;
   clearTimeout(urlPushTimer);
   urlPushTimer = setTimeout(async () => {
-    try{ if(Date.now() - lastUrlPull > 3000) await syncPush(true); }catch(e){}
+    try{ if(Date.now() - lastUrlPull > 3000){
+      if(!safeToAutoPush()){ window.__syncStatus='offline'; renderSyncInd();
+        toast('检测到本机数据异常为空，已阻止覆盖云端；请点「从云端恢复」'); return; }
+      await syncPush(true);
+    } }catch(e){}
     finally { urlPushPending = false; }
   }, 1500);
 }
 /* 打开 / 切回前台时自动拉取 */
 async function urlAutoPull(force){
   if(!state.sync || !state.sync.url) return;
+  // P23: 编辑弹窗开着就跳过自动拉取，避免另一端推送冲掉正在输入的内容
+  if(!force && wbModalOpen()) return;
+  // P22: 离线期间的改动先补推成功，再允许拉取；云端也被改过时不静默覆盖
+  if(window.__pendingSync > 0 && state.sync.token && !getDB()){
+    window.__pushFailed = false;
+    try{ await syncPush(true); }catch(e){}
+    if(!window.__pushFailed) clearPending();
+    else toast('云端可能也被另一台设备改过，本机改动已保留；请在设置页选择「推送」或「拉取」');
+    return;
+  }
   if(getDB()) return;
   if(urlPushPending) return;
   const now = Date.now();
@@ -2938,6 +3204,8 @@ async function syncPush(silent){
         const g = await fetch(url, { headers: { 'Authorization':'Bearer '+token, 'Accept':'application/vnd.github+json' } });
         if(g.ok){ const j = await g.json(); sha = j.sha; }
       }
+      // P23: PUT 前比对云端条数，防止本机空态把云端真数据抹掉
+      if(!await wbCloudGuard(token, silent)) return;
       const content = b64enc(JSON.stringify(syncPayload(), null, 2));
       const body = { message: 'workbench sync ' + new Date().toISOString(), content };
       if(sha) body.sha = sha;
@@ -2953,7 +3221,7 @@ async function syncPush(silent){
     lastUrlPush = Date.now();
     window.__pushFailed = false;
     try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}  // 直接落盘，避免触发回推循环
-    window.__syncStatus = 'synced'; renderSyncInd();
+    window.__syncStatus = 'synced'; clearPending(); renderSyncInd(); rememberGood(state);
     if(!silent) toast('已推送到云端');
   }catch(e){ window.__syncStatus = 'offline'; renderSyncInd(); window.__pushFailed = true; if(!silent) toast('推送失败：' + e.message); }
 }
@@ -2971,6 +3239,9 @@ async function syncPull(auto){
     if(isGitHubContentsApi(url)){ const j = await res.json(); s = JSON.parse(b64dec(j.content)); }
     else { s = await res.json(); }
     if(!s || !s.categories) throw new Error('云端数据格式不正确');
+    // P23: 云端 categories 为空对象 → 跳过覆盖，避免把本机清空
+    if(!Object.keys(s.categories || {}).length){ window.__syncStatus='offline'; renderSyncInd();
+      if(!auto) toast('云端数据为空，已跳过覆盖，避免清空本机'); return; }
     if(auto){
       if(window.__pushFailed){ window.__syncStatus='offline'; renderSyncInd();
         if(!window.__pushFailWarned){ window.__pushFailWarned=true; toast('本地改动还没推送成功，已暂停自动覆盖'); }
@@ -2983,6 +3254,7 @@ async function syncPull(auto){
       try{ localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }catch(e){}
       lastUrlPull = Date.now();
       window.__syncStatus = 'synced'; renderAll();
+      try{ window.__offlineMode=false; window.__demoMode=false; rememberGood(state); renderSyncInd(); }catch(e){}
     } else {
       showConfirm('用云端数据覆盖本地？', '将用云端内容覆盖当前本地数据。', () => {
         state = ensureStateDefaults(s);
@@ -3104,6 +3376,11 @@ document.addEventListener('click', function(e){
     }
     case 'goto-sync-setup': showView('settings'); setTimeout(()=>{ const s=$('syncSection'); if(s) s.scrollIntoView({behavior:'smooth',block:'start'}); },60); break;
     case 'dismiss-setup': { const b=$('syncSetupBar'); if(b) b.style.display='none'; break; }
+    case 'wb-reload': location.reload(true); break;
+    case 'wb-restore-cloud': wbRestoreCloud(); break;
+    case 'wb-rollback': wbRollback(); break;
+    case 'wb-diag': wbShowDiag(); break;
+    case 'wb-diag-close': { const d=wbEl('wbDiagBox'); if(d) d.style.display='none'; break; }
 
     case 'toggle-category':
       state.categories[arg].enabled = state.categories[arg].enabled === false ? true : false;
@@ -3437,6 +3714,7 @@ async function init(){
   try{ if(navigator.storage && navigator.storage.persist){ navigator.storage.persist().catch(function(){}); } }catch(e){}
   renderAll();
   showView('home');
+  wbInitExtras();   // P21/P22/P24：版本自检、持久化检查、IDB 兜底、诊断初始化
   // 后台从云端拉取最新数据（本地缓存兜底，离线可用）
   const db = getDB();
   if(db){
