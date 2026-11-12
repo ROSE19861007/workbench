@@ -1,0 +1,34 @@
+<!DOCTYPE html>
+<html lang="zh-CN"><head><meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>工作台图标生成器</title>
+<style>
+body{font-family:-apple-system,BlinkMacSystemFont,"Segoe UI",sans-serif;background:#f4eee6;color:#2a2118;margin:0;padding:28px;max-width:520px;margin:auto;line-height:1.8}
+h1{font-size:20px;margin:0 0 6px}p{font-size:14px;color:#6b6152}
+.row{display:flex;gap:10px;align-items:center;margin:18px 0}
+input[type=text]{flex:1;padding:10px 12px;border:1px solid #d9cdba;border-radius:8px;font-size:16px;background:#fff}
+button{padding:10px 16px;border:1px solid #a83222;background:#a83222;color:#fff;border-radius:8px;font-size:14px;cursor:pointer}
+canvas{width:220px;height:220px;border:1px solid #d9cdba;border-radius:16px;display:block;margin:16px 0}
+.note{font-size:12px;background:#fff8ef;border:1px solid #e6d6bd;padding:12px;border-radius:8px}
+</style></head><body>
+<h1>工作台图标生成器</h1>
+<p>输入你的名字缩写，预览并下载带缩写的燕麦色图标。</p>
+<div class="row"><input type="text" id="txt" maxlength="4" value="ME" placeholder="如 LJ / ME / 小林"><button onclick="draw()">生成</button></div>
+<canvas id="cv" width="512" height="512"></canvas>
+<div class="row"><button onclick="dl()">下载 PNG</button></div>
+<div class="note">主屏图标由站点里的 <b>icon-512.png / icon-192.png</b> 决定。如果大家共用同一个网址，图标就是同一张；想让主屏也显示自己的缩写，需要把下载的 PNG 换进<b>你自己部署的那份</b>目录里（替换后清一次浏览器缓存再重新添加到主屏）。网页内的缩写不用这么麻烦，在「设置 → 个性化」里填一下就生效。</div>
+<script>
+var img=new Image();img.src='icon-512.png';img.onload=draw;
+function draw(){
+  var text=(document.getElementById('txt').value||'ME').trim().slice(0,4)||'ME';
+  var c=document.getElementById('cv'),x=c.getContext('2d');
+  x.fillStyle='#f4eee6';x.fillRect(0,0,512,512);
+  if(img.complete&&img.naturalWidth)x.drawImage(img,0,0,512,512);
+  x.save();x.translate(256,250);x.rotate(-8*Math.PI/180);x.fillStyle='#1c1a17';
+  var s=text.length<=2?190:(text.length===3?140:108);
+  x.font='italic '+s+'px Georgia, "Times New Roman", serif';
+  x.textAlign='center';x.textBaseline='middle';x.fillText(text,0,0);x.restore();
+}
+function dl(){var a=document.createElement('a');a.download='workbench-icon.png';a.href=document.getElementById('cv').toDataURL('image/png');a.click();}
+document.getElementById('txt').addEventListener('input',draw);
+</script></body></html>
