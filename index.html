@@ -837,7 +837,7 @@ html.device-landscape #chartQuadrantDist svg{ display:block; width:100%; height:
       <button class="btn icon back" data-action="nav-home" aria-label="返回首页" data-page-node-id="M63VkWFMMUzcfUjK3Elwt2">
         <svg viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" stroke-width="2" data-page-node-id="XhWULkaIyxXwNf9szb6B13"><path d="M15 18l-6-6 6-6" data-page-node-id="cQLQVD7wc1zCVunRELxd4D"/></svg>
       </button>
-      <h2 id="moduleTitle" class="module-title-card" data-page-node-id="LOOYg0hqbxUHmIDm4dm3cY">学习</h2>
+      <h2 id="moduleTitle" class="module-title-card" data-page-node-id="LOOYg0hqbxUHmIDm4dm3cY"></h2>
       <button class="btn small" data-action="add-child-root" data-page-node-id="AodTqHU0L6TjEJqKlqojFd">＋ 添加</button>
     </div>
     <div id="moduleTree" data-page-node-id="8Ou5QSNg1tfBORCn8jwXkn"></div>
@@ -951,7 +951,7 @@ html.device-landscape #chartQuadrantDist svg{ display:block; width:100%; height:
     <h3 id="modalTitle" data-page-node-id="KoyHRb62OAbSsFfDdtoz7Z">新建</h3>
     <div id="modalBody" data-page-node-id="4TpWMoOlSCnVUPwSF5IWGl"></div>
     <div class="modal-actions" data-page-node-id="0n9iSS5zwoewIfUHJgG35e">
-      <button class="btn btn-test hidden" id="modalTestBeepBtn" data-action="modal-test-beep" data-page-node-id="modalTestBeep001">🔔 测试响铃</button>
+      <button id="modalTestBeepBtn" style="display:none!important" aria-hidden="true"></button>
       <button class="btn" data-action="modal-close" data-page-node-id="qlecTkG9DZcK2APBgEEpaP">取消</button>
       <button class="btn primary" data-action="modal-save" data-page-node-id="03GrCeGeumwrUwwZaFjwcN">保存</button>
     </div>
@@ -965,18 +965,6 @@ html.device-landscape #chartQuadrantDist svg{ display:block; width:100%; height:
     <div class="modal-actions" data-page-node-id="p3tbbvSADe4HRVQzWWV0CT">
       <button class="btn" data-action="confirm-no" data-page-node-id="99rSBmqkpL2V0FdtP5KvvJ">取消</button>
       <button class="btn danger" data-action="confirm-yes" data-page-node-id="8NmzWEvwJE49FFezRqrCwl">确认</button>
-    </div>
-  </div>
-</div>
-
-<!-- 一键导入系统日历 引导弹窗 -->
-<div class="overlay hidden" id="calGuideOverlay" data-page-node-id="calGuideOverlay001">
-  <div class="modal" style="max-width:420px;" data-page-node-id="calGuideModal001">
-    <h3 data-page-node-id="calGuideTitle001">关掉网页也能响</h3>
-    <div id="calGuideBody" data-page-node-id="calGuideBody001"></div>
-    <div class="modal-actions" data-page-node-id="calGuideActions001">
-      <button class="btn" data-action="cal-test-beep" data-page-node-id="calGuideTest001">测试响铃</button>
-      <button class="btn primary" data-action="cal-guide-close" data-page-node-id="calGuideClose001">知道了</button>
     </div>
   </div>
 </div>
@@ -999,7 +987,7 @@ html.device-landscape #chartQuadrantDist svg{ display:block; width:100%; height:
     <div class="chart-scroll" id="chartScroll" data-page-node-id="vEuVHHMR7YkPXfB4o3Jsg0">
       <div id="chartContainer" data-page-node-id="dK50g0plsYc6f4gD1cBLZ8"></div>
     </div>
-    <div class="note-hint" style="margin-top:10px;" data-page-node-id="Pi4B1AAEkgNXWCbhvAelTj">图中已包含学习 / 项目 / 家庭三大模块的所有分组与细分任务；任务标注了截止日期、重要、紧急、完成状态。</div>
+    <div class="note-hint" style="margin-top:10px;" data-page-node-id="Pi4B1AAEkgNXWCbhvAelTj">图中已包含你所有分类下的分组与细分任务；分类可在「设置 → 分类管理」里自由改名、增删和排序；任务标注了截止日期、重要、紧急、完成状态。</div>
   </div>
 </div>
 
@@ -1062,7 +1050,7 @@ function isTouch(){ return ('ontouchstart' in window) || navigator.maxTouchPoint
 
 const STORAGE_KEY = 'wb_personal_workbench_v2';
 /* ===== P20-P24 (2026-11-09) 根治「界面消失」：令牌与界面解耦 ===== */
-const BUILD_NO = '20261109a';
+const BUILD_NO = '20261112a';
 const GOOD_KEY = 'wb_last_good_state_v1';
 const META_KEY = 'wb_local_meta_v1';
 const PREV_KEY = 'wb_prev_state_v1';
@@ -1258,7 +1246,8 @@ function wbInitExtras(){
   // 示例态但 IndexedDB 里还有真实快照 → 自动救回来（Chrome「仅清缓存」场景）
   if(window.__demoMode){
     wbIDBGet().then(function(g){
-      if(g && g.categories && window.__demoMode){
+      // P27: 本机已有未推送改动时，别用旧快照覆盖（否则降级态的编辑会丢）
+      if(g && g.categories && window.__demoMode && !(window.__pendingSync > 0)){
         const ck = readTokenCookie(); if(ck){ g.sync = g.sync || {}; g.sync.token = ck; }
         state = ensureStateDefaults(g);
         window.__demoMode = false; window.__offlineMode = true;
@@ -1370,7 +1359,7 @@ function defaultState(){
 let state = loadState();
 let collapsedIds = new Set();
 let currentView = 'home';
-let currentModule = '学习';
+let currentModule = '';
 let modalMode = null;      // add-node | edit-node | add-task | edit-task | edit-category
 let modalCtx = null;
 let confirmCb = null;
@@ -1659,31 +1648,7 @@ function renderAll(){
   if(currentView === 'settings') renderSettingsTree();
 }
 
-function renderEntryCards(){
-  const wrap = $('entryCards');
-  const defs = [
-    { num:'01', name:'学习', desc:'英语 · 开放大学社工 · 论文', cls:'learn' },
-    { num:'02', name:'项目', desc:'逢泰日常管理 · 专案 · 小程序', cls:'project' },
-    { num:'03', name:'家庭', desc:'追踪提醒 · 计划方案', cls:'family' }
-  ];
-  wrap.innerHTML = defs.map(d => {
-    const c = state.categories[d.name];
-    const enabled = c ? c.enabled !== false : true;
-    const cnt = c ? countLeafNodes(c.items) : 0;
-    return `<div class="entry-card ${enabled?'':'disabled'}" data-action="open-module" data-arg="${d.name}" role="button">
-      <button class="toggle ${enabled?'':'off'}" data-action="toggle-category" data-arg="${d.name}">${enabled?'启用':'停用'}</button>
-      <div class="ec-top">
-        <div class="entry-icon ${d.cls}"></div>
-        <div class="entry-info">
-          <div class="entry-num">${d.num}</div>
-          <div class="name">${d.name}</div>
-          <div class="desc">${d.desc}<br>${cnt} 项</div>
-        </div>
-      </div>
-      <div class="ec-enter">进入</div>
-    </div>`;
-  }).join('');
-}
+function renderEntryCards(){ /* 由 P25 分类模块在运行时覆盖 */ }
 function countLeafNodes(items){
   let n = 0;
   (function w(list){ for(const it of list){ n++; if(it.items) w(it.items); } })(items);
@@ -1747,7 +1712,7 @@ function taskCardHtml(t){
   if(t.dueTime) badges += `<span class="badge time">${esc(t.dueTime)}</span>`;
   const url = t.url ? normalizeUrl(t.url) : '';
   const linkIcon = url ? `<a class="qt-link" href="${esc(url)}" target="_blank" rel="noopener noreferrer" title="打开链接">${ICON.link}</a>` : '';
-  const calBtn = (t.due || t.dueTime) ? `<button class="qt-cal" data-action="add-calendar" data-arg="${t.id}" title="添加到日历提醒"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></button>` : '';
+  const calBtn = (t.due || t.dueTime) ? `` : '';
   return `<div class="q-task ${t.done?'done':''}" draggable="true" data-task-id="${t.id}" title="点圆圈或双击标记完成/取消">
     <span class="chk" data-action="task-done-click" data-arg="${t.id}" role="checkbox" aria-label="标记完成/取消" tabindex="0"></span>
     <div class="q-task-main">
@@ -1764,7 +1729,7 @@ function taskCardHtml(t){
 
 function renderModuleTree(){
   $('moduleTitle').textContent = currentModule;
-  $('moduleTitle').className = 'module-title-card ' + ({学习:'learn',项目:'project',家庭:'family'}[currentModule] || '');
+  $('moduleTitle').className = 'module-title-card ' + wbCatCls(currentModule);
   const c = state.categories[currentModule];
   if(!c){ $('moduleTree').innerHTML = '<div class="tree-empty">分类不存在</div>'; return; }
   const root = $('moduleTree');
@@ -1844,7 +1809,7 @@ function renderNode(node, path, depth){
 
   const taskUrl = (node.type==='task' && node.url) ? normalizeUrl(node.url) : '';
   const taskLinkBtn = taskUrl ? `<a class="t-link" href="${esc(taskUrl)}" target="_blank" rel="noopener noreferrer" title="打开链接">${ICON.link}</a>` : '';
-  const taskCalBtn = (node.type==='task' && (node.due || node.dueTime)) ? `<button class="t-cal" data-action="add-calendar" data-arg="${node.id}" title="添加到日历提醒"><svg viewBox="0 0 24 24" width="15" height="15" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="3" y="4" width="18" height="18" rx="2"/><path d="M16 2v4M8 2v4M3 10h18"/></svg></button>` : '';
+  const taskCalBtn = (node.type==='task' && (node.due || node.dueTime)) ? `` : '';
   const titleClass = (node.type==='group' && depth===0) ? 't-title depth-0' : 't-title';
   return `<li class="tnode ${disabled?'disabled':''} ${(node.type==='task'&&node.done)?'task-done':''}" data-node-id="${node.id}">
     ${left}
@@ -2185,46 +2150,7 @@ function renderCharts(){
 /* 1) 分类任务完成度 — 已隐藏（位置已预留，待重新设计为「分类内 / 任务内 不同天数」柱状图等） */
 
 /* 2) 分类任务分布（环形图） */
-function renderQuadrantDist(){
-  const tasks = collectTasks();
-  const cats = ['学习','项目','家庭'];
-  const colors = { '学习':'#7a9a6a', '项目':'#6a8fa8', '家庭':'#c47a5a', '事务':'#b93b2a' };
-  const cc = { '学习':0, '项目':0, '家庭':0, '事务':0 };
-  for(const t of tasks){
-    const cat = cats.find(c => (t.source||'').startsWith(c)) || '事务';
-    cc[cat]++;
-  }
-  const total = tasks.length;
-  const defs = cats.concat(total ? [] : []).map(c => ({ name:c, color:colors[c] }));
-  const W = 680, H = 150, cx = 90, cy = 75, r = 52;
-  const C = 2*Math.PI*r;
-  let segs = '';
-  if(total === 0){
-    segs = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--card2)" stroke-width="22"/>`;
-  } else {
-    let offset = 0;
-    for(const d of defs){
-      const c = d.name;
-      const frac = cc[c]/total;
-      if(frac <= 0) continue;
-      const len = frac*C;
-      segs += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${d.color}" stroke-width="22" stroke-dasharray="${len} ${C-len}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})"/>`;
-      offset += len;
-    }
-  }
-  let legend = '';
-  let ly = 24;
-  for(const d of defs){
-    legend += `<rect x="210" y="${ly}" width="12" height="12" rx="3" fill="${d.color}"/>`;
-    legend += `<text x="232" y="${ly+11}" font-size="13" fill="var(--text)">${d.name}：${cc[d.name]}</text>`;
-    ly += 30;
-  }
-  let svg = `<svg viewBox="0 0 ${W} ${H}" font-family="-apple-system,'PingFang SC','Microsoft YaHei',sans-serif">${segs}
-    <text x="${cx}" y="${cy-4}" font-size="20" font-weight="700" fill="var(--text)" text-anchor="middle">${total}</text>
-    <text x="${cx}" y="${cy+16}" font-size="11" fill="var(--muted)" text-anchor="middle">任务总数</text>
-    ${legend}</svg>`;
-  $('chartQuadrantDist').innerHTML = svg;
-}
+function renderQuadrantDist(){ /* 由 P25 分类模块在运行时覆盖 */ }
 
 /* =====================================================================
    视图切换 / 导航
@@ -2243,7 +2169,7 @@ function setNavActive(name){
   document.querySelectorAll('.bottom-nav button').forEach(b => b.classList.remove('active'));
   const map = { home:'nav-home', module:'nav-learn', settings:'nav-home' };
   let key = map[name] || '';
-  if(name === 'module'){ key = { '学习':'nav-learn','项目':'nav-project','家庭':'nav-family' }[currentModule] || 'nav-learn'; }
+  if(name === 'module'){ key = 'wb-cat-' + Math.max(0, wbCatNames().indexOf(currentModule)); }
   if(key){ const b = document.querySelector('[data-nav="'+key+'"]'); if(b) b.classList.add('active'); }
 }
 function goHome(){ showView('home'); window.scrollTo({top:0, behavior:'smooth'}); }
@@ -2538,8 +2464,8 @@ function dueFieldsHtml(hasDue, dueValue, dueTimeValue, remindChecked){
     <div class="f-group" id="f-due-wrap" style="${hasDue?'':'display:none'}">
       <label>日期（可留空）</label><input type="date" id="f-due" value="${esc(dueValue||'')}">
       <label style="margin-top:8px">时间（可留空）</label><input type="time" id="f-due-time" value="${esc(dueTimeValue||'')}">
-      <div class="chk-row" style="margin-top:10px"><input type="checkbox" id="f-remind" ${remindChecked?'checked':''}><span class="lbl">⏰ 提前 5 分钟响铃提醒</span></div>
-      <div class="due-hint">提醒规则：设了具体时间即默认<b>提前 5 分钟</b>响铃＋振动（可取消）。<b>网页开着才响</b>；想关掉网页也响，点任务上的<b>日历小图标</b>导出到手机 / 电脑日历（Google 日历一键加入，或下载 .ics 导入系统日历）。<br>不确定手机能不能响？点编辑弹窗左下角「🔔 测试响铃」立刻试一次。</div>
+      <input type="checkbox" id="f-remind" checked style="display:none">
+
     </div>`;
 }
 function bindDueToggle(){
@@ -2621,7 +2547,7 @@ function pickUrl(id){
   if(picker) picker.classList.add('hidden');
 }
 
-/* ---------- 日历提醒（生成 ICS 文件导入手机日历，课前 15 分钟响铃） ---------- */
+/* ---------- 通用下载工具 ---------- */
 function downloadFile(content, mime, filename){
   const a = document.createElement('a');
   a.href = 'data:' + mime + ',' + encodeURIComponent(content);
@@ -2630,131 +2556,6 @@ function downloadFile(content, mime, filename){
   a.click();
   setTimeout(()=>{ document.body.removeChild(a); }, 300);
 }
-/* 任务日历弹窗：只保留「复制信息去日历 App 手动添加」这一条可靠路径 */
-let currentCalText = '';
-
-function addTaskToCalendar(taskId){
-  const t = collectTasks().find(x => x.id === taskId);
-  if(!t){ toast('任务不存在'); return; }
-  if(!t.due && !t.dueTime){ toast('该任务没有设置时间，无法加到日历'); return; }
-  if(!t.due){ toast('只有时间没有日期，无法加到日历，请先补填日期'); return; }
-  const _lead = (t.remind !== false) ? (Number(t.remindLead) || 5) : 0;
-  currentCalText = (t.title || '提醒') + '\n日期：' + (t.due || '') + ' ' + (t.dueTime || '') + (_lead > 0 ? ('\n提醒：提前 ' + _lead + ' 分钟') : '');
-  unlockAudio();
-  requestReminderPermission();
-  showCalendarGuide(t);
-}
-/* 复制事件信息，去日历 App 手动添加（100% 可用，不依赖文件下载/分享） */
-function copyEventText(){
-  if(!currentCalText){ toast('请先点任务上的日历图标'); return; }
-  const done = ()=>{ toast('已复制！去「日历」App 点 + 新建并粘贴标题、照填日期时间', 5000); };
-  if(navigator.clipboard && navigator.clipboard.writeText){
-    navigator.clipboard.writeText(currentCalText).then(done).catch(()=>legacyCopy(currentCalText, done));
-  } else {
-    legacyCopy(currentCalText, done);
-  }
-}
-function legacyCopy(txt, done){
-  try{
-    const ta = document.createElement('textarea');
-    ta.value = txt; ta.style.position='fixed'; ta.style.left='-9999px';
-    document.body.appendChild(ta); ta.focus(); ta.select();
-    document.execCommand('copy');
-    document.body.removeChild(ta);
-    done();
-  }catch(e){
-    toast('复制失败，请手动记下：' + txt.replace(/\n/g, ' / '), 6000);
-  }
-}
-/* 引导弹窗：只保留复制去日历手动添加 */
-function showCalendarGuide(t){
-  const lead = (t.remind !== false) ? (Number(t.remindLead) || 5) : 5;
-  const html = '<p style="font-size:14px;color:var(--muted);margin:0 0 14px;line-height:1.6;">网页关掉后没法自己响铃（这是浏览器限制）。要<b>关掉网页也提醒</b>，请把这条信息复制到手机「日历」App 里手动建一个事件：标题、日期、时间都齐全，到点前 ' + lead + ' 分钟会响（你的小米日历通知 / 声音 / 振动已开）。</p>'
-    + '<div class="cal-btns" style="display:flex;flex-direction:column;gap:10px;margin-bottom:12px;">'
-    + '<button class="btn primary" data-action="cal-copy">📋 复制此任务信息，去日历 App 手动添加</button>'
-    + '</div>'
-    + '<p style="font-size:13px;color:var(--muted);margin:0;line-height:1.5;">手动添加步骤：打开「日历」App → 点右下角 <b>+</b> → 标题处粘贴（或照抄）→ 选好日期和时间 → 保存。可在日历里顺便设个提前 5 分钟的提醒。</p>';
-  $('calGuideBody').innerHTML = html;
-  $('calGuideOverlay').classList.remove('hidden');
-}
-
-/* ---------- 页面内响铃提醒：页面开着时，到点前15分钟真实响铃；页面关掉则无法响 ---------- */
-/* 移动端 Web Audio 必须有过用户手势才能出声；这里常驻一个上下文，在首次交互时解锁并复用 */
-let wbAudioCtx = null;
-function unlockAudio(){
-  try{
-    const AC = window.AudioContext || window.webkitAudioContext; if(!AC) return;
-    if(!wbAudioCtx) wbAudioCtx = new AC();
-    if(wbAudioCtx.state === 'suspended') wbAudioCtx.resume();
-  }catch(e){}
-}
-function reminderBeep(){
-  try{
-    const AC = window.AudioContext || window.webkitAudioContext; if(!AC) return;
-    let ctx = wbAudioCtx;
-    if(!ctx){ ctx = new AC(); wbAudioCtx = ctx; }
-    if(ctx.state === 'suspended') ctx.resume();
-    const tone = (freq, start, dur) => {
-      const o = ctx.createOscillator(), g = ctx.createGain();
-      o.connect(g); g.connect(ctx.destination); o.type='sine'; o.frequency.value=freq;
-      g.gain.setValueAtTime(0.0001, start);
-      g.gain.exponentialRampToValueAtTime(0.5, start+0.05);
-      g.gain.exponentialRampToValueAtTime(0.0001, start+dur);
-      o.start(start); o.stop(start+dur);
-    };
-    const t0 = ctx.currentTime;
-    tone(880, t0, 1.0); tone(1175, t0+1.1, 1.0); tone(880, t0+2.2, 1.0);
-  }catch(e){}
-  /* 振动兜底：移动端不依赖音频解锁，最稳的"响铃"信号 */
-  try{ if(navigator.vibrate) navigator.vibrate([400,200,400,200,400]); }catch(e){}
-}
-function reminderKey(t){ return 'wb_reminded_' + t.id + '_' + (t.due||'') + '_' + (t.dueTime||''); }
-function reminderNotify(t){
-  const lead = t.remindLead || 5;
-  const msg = '⏰ 提醒：' + (t.title||'事项') + ' 将在约' + lead + '分钟后开始';
-  if('Notification' in window && Notification.permission === 'granted'){ try{ new Notification(msg); }catch(e){} }
-  toast(msg, 6000);
-}
-/* 天数级提前提醒文案（如发工资提前 N 天） */
-function reminderNotifyDays(t, dist){
-  const msg = '⏰ 提前提醒：' + (t.title||'事项') + ' 还有 ' + dist + ' 天（' + (t.due||'') + (t.dueTime?(' '+t.dueTime):'') + '）';
-  if('Notification' in window && Notification.permission === 'granted'){ try{ new Notification(msg); }catch(e){} }
-  toast(msg, 8000);
-}
-
-function reminderCheck(){
-  try{
-    const now = Date.now();
-    const today0 = new Date(todayStr()+'T00:00:00').getTime();
-    const tasks = collectTasks().filter(x => x.due);
-    for(const t of tasks){
-      const due = new Date((t.due+'T'+(t.dueTime||'09:00')+':00')).getTime();
-      if(isNaN(due)) continue;
-      // 分钟级临近提醒（dueTime 前 remindLead 分钟弹出）
-      if(t.remind !== false && t.dueTime){
-        const lead = (t.remindLead || 5) * 60 * 1000;
-        const diff = due - now;
-        if(diff > 0 && diff <= lead){
-          const k = reminderKey(t);
-          if(!localStorage.getItem(k)){ localStorage.setItem(k,'1'); reminderBeep(); reminderNotify(t); }
-        } else if(diff < -86400000 && localStorage.getItem(k)){ localStorage.removeItem(k); }
-      }
-      // 天数级提前提醒（如发工资：每月 10 号前 remindLeadDays 天弹出）
-      if(t.remindLeadDays && t.remindLeadDays > 0){
-        const due0 = new Date(t.due+'T00:00:00').getTime();
-        const dist = Math.round((due0 - today0)/86400000);
-        const k = 'wb_lead_' + t.id + '_' + t.due;
-        if(dist >= 0 && dist <= t.remindLeadDays){
-          if(!localStorage.getItem(k)){ localStorage.setItem(k,'1'); reminderBeep(); reminderNotifyDays(t, dist); }
-        } else if(dist < 0 && localStorage.getItem(k)){ localStorage.removeItem(k); }
-      }
-    }
-  }catch(e){}
-}
-function requestReminderPermission(){
-  if('Notification' in window && Notification.permission === 'default'){ Notification.requestPermission().catch(()=>{}); }
-}
-
 function openAddNodeModal(defaultLoc, presetType){
   modalMode = 'add-node';
   modalCtx = { loc: defaultLoc || null };
@@ -2810,7 +2611,7 @@ function renderTypeFields(editDue){
   }else if(t === 'task'){
     el.innerHTML = `
       ${dueFieldsHtml(!!editDue, editDue || '', '')}
-      <div class="chk-row"><input type="checkbox" id="f-important"><span class="lbl">重要</span><span class="hint">来源为「项目」时自动视为重要</span></div>
+      <div class="chk-row"><input type="checkbox" id="f-important"><span class="lbl">重要</span><span class="hint">勾了才进「重要」象限</span></div>
       <div class="chk-row"><input type="checkbox" id="f-urgent"><span class="lbl">紧急</span><span class="hint">今天或明天到期自动视为紧急</span></div>
       <div class="chk-row"><input type="checkbox" id="f-quadrant" checked><span class="lbl">加入四象限</span></div>
       ${urlFieldHtml('')}
@@ -2854,7 +2655,7 @@ function saveAddNode(){
     let path = '';
     if(loc.startsWith('root:')) path = loc.slice(5);
     else if(loc.startsWith('g:')) path = nodePath(loc.slice(2)) || '';
-    if(path.startsWith('项目')) node.important = true;
+    // 重要由用户勾选，不再与分类名绑定（分类可自由改名）
     if(node.due && daysUntil(node.due) <= 1) node.urgent = true;
   }
   if(loc.startsWith('root:')){
@@ -2914,7 +2715,7 @@ function openEditNodeModal(id){
     else if(t === 'task'){
       el.innerHTML = `
         ${dueFieldsHtml(!!(node.due||node.dueTime), node.due||'', node.dueTime||'')}
-        <div class="chk-row"><input type="checkbox" id="f-important" ${node.important?'checked':''}><span class="lbl">重要</span><span class="hint">来源为「项目」时自动视为重要</span></div>
+        <div class="chk-row"><input type="checkbox" id="f-important" ${node.important?'checked':''}><span class="lbl">重要</span><span class="hint">勾了才进「重要」象限</span></div>
         <div class="chk-row"><input type="checkbox" id="f-urgent" ${node.urgent?'checked':''}><span class="lbl">紧急</span><span class="hint">今天或明天到期自动视为紧急</span></div>
         <div class="chk-row"><input type="checkbox" id="f-quadrant" ${node.inQuadrant?'checked':''}><span class="lbl">加入四象限</span></div>
         ${urlFieldHtml(node.url||'')}
@@ -3000,14 +2801,9 @@ function openTaskModal(prefill){
   $('modalBody').innerHTML = `
     <div class="f-group"><label>任务名称</label><input type="text" id="f-title" placeholder="要做什么？" value="${esc(prefill&&prefill.title||'')}"></div>
     <div class="f-group"><label>来源</label>
-      <select id="f-source">
-        <option value="事务">事务处理器</option>
-        <option value="学习">学习</option>
-        <option value="项目">项目</option>
-        <option value="家庭">家庭</option>
-      </select></div>
+      <select id="f-source">${wbSourceOptions()}</select></div>
     ${dueFieldsHtml(!!((prefill&&prefill.due)||(prefill&&prefill.dueTime)), prefill&&prefill.due||'', prefill&&prefill.dueTime||'')}
-    <div class="chk-row"><input type="checkbox" id="f-important"><span class="lbl">重要</span><span class="hint">来源为「项目」自动视为重要</span></div>
+    <div class="chk-row"><input type="checkbox" id="f-important"><span class="lbl">重要</span><span class="hint">勾了才进「重要」象限</span></div>
     <div class="chk-row"><input type="checkbox" id="f-urgent"><span class="lbl">紧急</span><span class="hint">今天或明天到期自动视为紧急</span></div>
     <div class="chk-row"><input type="checkbox" id="f-quadrant" checked><span class="lbl">加入四象限</span></div>
     ${urlFieldHtml('')}
@@ -3048,7 +2844,7 @@ function openEditTaskModal(id){
     <div class="f-group"><label>任务名称</label><input type="text" id="f-title" value="${esc(t.title)}"></div>
     <div class="f-group"><label>来源</label><input type="text" id="f-source" value="${esc(t.source||'')}"></div>
     ${dueFieldsHtml(!!(t.due||t.dueTime), t.due||'', t.dueTime||'', t.remind !== false)}
-    <div class="chk-row"><input type="checkbox" id="f-important" ${t.important?'checked':''}><span class="lbl">重要</span><span class="hint">来源为「项目」自动视为重要</span></div>
+    <div class="chk-row"><input type="checkbox" id="f-important" ${t.important?'checked':''}><span class="lbl">重要</span><span class="hint">勾了才进「重要」象限</span></div>
     <div class="chk-row"><input type="checkbox" id="f-urgent" ${t.urgent?'checked':''}><span class="lbl">紧急</span><span class="hint">今天或明天到期自动视为紧急</span></div>
     <div class="chk-row"><input type="checkbox" id="f-quadrant" ${t.inQuadrant?'checked':''}><span class="lbl">加入四象限</span></div>
     ${urlFieldHtml(t.url||'')}
@@ -3359,7 +3155,6 @@ document.addEventListener('click', function(e){
     case 'scroll-top': scrollToTop(); break;
     case 'toggle-url-picker': toggleUrlPicker(); break;
     case 'pick-url': pickUrl(arg); break;
-    case 'add-calendar': addTaskToCalendar(arg); break;
     case 'settings': showView('settings'); break;
     case 'quick-add': openTaskModal(); break;
     case 'add-child-root': openAddNodeModal('root:'+currentModule); break;
@@ -3445,10 +3240,6 @@ document.addEventListener('click', function(e){
     case 'task-toggle': toggleTaskEnabled(arg); break;
 
     case 'modal-close': closeModal(); break;
-    case 'cal-copy': copyEventText(); break;
-    case 'cal-guide-close': $('calGuideOverlay').classList.add('hidden'); break;
-    case 'cal-test-beep': unlockAudio(); reminderBeep(); toast('三声蜂鸣 + 振动（若没声音，请先点一下页面任意处解锁音频）', 5000); break;
-    case 'modal-test-beep': unlockAudio(); reminderBeep(); toast('听到三声蜂鸣 / 感到振动 = 提醒正常。没声音请先调大「媒体音量」再点一次。', 6000); break;
     case 'modal-save':
       if(modalMode === 'add-node') saveAddNode();
       else if(modalMode === 'edit-node') saveEditNode();
@@ -3679,7 +3470,6 @@ function closeScheduleLightbox(){
 $('modalOverlay').addEventListener('click', function(e){ if(e.target === this) closeModal(); });
 $('confirmOverlay').addEventListener('click', function(e){ if(e.target === this) confirmNo(); });
 $('chartOverlay').addEventListener('click', function(e){ if(e.target === this) closeChart(); });
-$('calGuideOverlay').addEventListener('click', function(e){ if(e.target === this) this.classList.add('hidden'); });
 
 /* 导入文件 */
 $('importFile').addEventListener('change', function(e){
@@ -3749,17 +3539,263 @@ async function init(){
   // 配置同步 URL 时，打开即自动拉取一次
   if(state.sync && state.sync.url){ urlAutoPull(true); }
   // 自动刷新：每 30 秒拉一次云端；切回前台 / 重新聚焦时立即拉一次
-  setInterval(() => { autoPull(); retryFailedPush(); urlAutoPull(false); reminderCheck();
+  setInterval(() => { autoPull(); retryFailedPush(); urlAutoPull(false);
     if(applyRecurrence(state)){ saveState(); renderAll(); } }, 30000);
-  document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible'){ autoPull(); retryFailedPush(); urlAutoPull(false); reminderCheck();
+  document.addEventListener('visibilitychange', () => { if(document.visibilityState === 'visible'){ autoPull(); retryFailedPush(); urlAutoPull(false);
     if(applyRecurrence(state)){ saveState(); renderAll(); } } });
-  window.addEventListener('focus', () => { autoPull(); retryFailedPush(); urlAutoPull(false); reminderCheck();
+  window.addEventListener('focus', () => { autoPull(); retryFailedPush(); urlAutoPull(false);
     if(applyRecurrence(state)){ saveState(); renderAll(); } });
-  requestReminderPermission();
-  reminderCheck();
-  // 首次用户交互解锁音频（Web Audio 需手势才能出声；点任意处/触摸/按键即解锁）
-  ['click','touchstart','keydown'].forEach(ev => document.addEventListener(ev, unlockAudio, {passive:true}));
 }
+
+/* ===== P25：顶层分类完全自定义（不写死「学习/项目/家庭」） ===== */
+const WB_CAT_PALETTE = ['#7a9a6a','#6a8fa8','#c47a5a','#b98b3a','#8b7bb8','#5f9e9b','#b06a86','#8a8070','#6b8f5e','#a87b52'];
+const WB_CAT_LEGACY  = { '学习':'learn', '项目':'project', '家庭':'family' };
+const WB_OTHER = '事务处理器';
+let wbEditingCat = '';
+
+function wbCatNames(){ return Object.keys(state.categories || {}); }
+function wbCatColor(name){
+  const i = wbCatNames().indexOf(name);
+  return WB_CAT_PALETTE[(i < 0 ? 0 : i) % WB_CAT_PALETTE.length];
+}
+function wbCatCls(name){ return WB_CAT_LEGACY[name] || ''; }
+function wbCatIcon(name, where){
+  const cls = wbCatCls(name);
+  if(cls) return where === 'nav'
+    ? '<span class="nav-icon ' + cls + '"></span>'
+    : '<div class="entry-icon ' + cls + '"></div>';
+  const ch = esc((name || '?').slice(0, 1));
+  const st = 'background:' + wbCatColor(name) + ';font-family:var(--font-serif);font-weight:800;';
+  return where === 'nav'
+    ? '<span class="nav-icon" style="' + st + 'font-size:19px;">' + ch + '</span>'
+    : '<div class="entry-icon" style="' + st + 'font-size:26px;">' + ch + '</div>';
+}
+function wbSourceOptions(){
+  return '<option value="事务">事务处理器</option>' + wbCatNames().map(function(n){
+    return '<option value="' + esc(n) + '">' + esc(n) + '</option>';
+  }).join('');
+}
+function wbValidCat(v){
+  v = String(v || '').trim();
+  if(!v || v.length > 12) return '';
+  if(/[<>&"']/.test(v) || v.indexOf('/') >= 0 || v.indexOf('\\') >= 0) return '';
+  return v;
+}
+
+/* 首页入口卡片：按当前分类生成 */
+renderEntryCards = function(){
+  const wrap = $('entryCards');
+  if(!wrap) return;
+  const names = wbCatNames();
+  if(!names.length){ wrap.innerHTML = '<div class="tree-empty">还没有分类，到「设置 → 分类管理」新增一个</div>'; return; }
+  wrap.innerHTML = names.map(function(name, i){
+    const c = state.categories[name] || {};
+    const enabled = c.enabled !== false;
+    const cnt = countLeafNodes(c.items || []);
+    const num = String(i + 1).padStart(2, '0');
+    return `<div class="entry-card ${enabled ? '' : 'disabled'}" data-action="open-module" data-arg="${esc(name)}" role="button">
+      <button class="toggle ${enabled ? '' : 'off'}" data-action="toggle-category" data-arg="${esc(name)}">${enabled ? '启用' : '停用'}</button>
+      <div class="ec-top">
+        ${wbCatIcon(name, 'entry')}
+        <div class="entry-info">
+          <div class="entry-num">${num}</div>
+          <div class="name">${esc(name)}</div>
+          <div class="desc">${cnt} 项 · 点卡片进入</div>
+        </div>
+      </div>
+      <div class="ec-enter">进入</div>
+    </div>`;
+  }).join('');
+};
+
+/* 分类任务分布：分类名、数量、颜色全部动态，图例高度随分类数增长 */
+renderQuadrantDist = function(){
+  const box = $('chartQuadrantDist');
+  if(!box) return;
+  const tasks = collectTasks();
+  const names = wbCatNames();
+  const cc = {};
+  names.forEach(function(n){ cc[n] = 0; });
+  cc[WB_OTHER] = 0;
+  for(const t of tasks){
+    const src = t.source || '';
+    let hit = '';
+    for(const n of names){
+      if(src === n || src.indexOf(n + '/') === 0){ if(n.length > hit.length) hit = n; }
+    }
+    cc[hit || WB_OTHER]++;
+  }
+  const defs = names.map(function(n){ return { name:n, color:wbCatColor(n) }; });
+  defs.push({ name:WB_OTHER, color:(state.profile && state.profile.accent) || '#b93b2a' });
+  const total = tasks.length;
+  const W = 680, H = Math.max(150, 30 + defs.length * 30 + 12);
+  const cx = 90, cy = 75, r = 52, C = 2 * Math.PI * r;
+  let segs = '';
+  if(total === 0){
+    segs = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--card2)" stroke-width="22"/>`;
+  } else {
+    let offset = 0;
+    for(const d of defs){
+      const frac = cc[d.name] / total;
+      if(frac <= 0) continue;
+      const len = frac * C;
+      segs += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${d.color}" stroke-width="22" stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})"/>`;
+      offset += len;
+    }
+  }
+  let legend = '', ly = 24;
+  for(const d of defs){
+    legend += `<rect x="210" y="${ly}" width="12" height="12" rx="3" fill="${d.color}"/>`;
+    legend += `<text x="232" y="${ly + 11}" font-size="13" fill="var(--text)">${esc(d.name)}：${cc[d.name]}</text>`;
+    ly += 30;
+  }
+  box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" font-family="-apple-system,'PingFang SC','Microsoft YaHei',sans-serif">${segs}
+    <text x="${cx}" y="${cy - 4}" font-size="20" font-weight="700" fill="var(--text)" text-anchor="middle">${total}</text>
+    <text x="${cx}" y="${cy + 16}" font-size="11" fill="var(--muted)" text-anchor="middle">任务总数</text>
+    ${legend}</svg>`;
+};
+
+/* 底部导航：按当前分类重建，保留四象限等其它按钮 */
+function wbRenderNav(){
+  const center = document.querySelector('.nav-center');
+  if(!center) return;
+  center.querySelectorAll('button[data-action="open-module"]').forEach(function(b){ b.remove(); });
+  const names = wbCatNames();
+  const frag = document.createDocumentFragment();
+  names.forEach(function(name, i){
+    const b = document.createElement('button');
+    b.setAttribute('data-action', 'open-module');
+    b.setAttribute('data-arg', name);
+    b.setAttribute('data-nav', 'wb-cat-' + i);
+    b.setAttribute('title', name);
+    b.innerHTML = wbCatIcon(name, 'nav');
+    frag.appendChild(b);
+  });
+  center.insertBefore(frag, center.firstChild);
+  const right = document.querySelector('.nav-right');
+  if(right) right.textContent = 'P. 01 / ' + String(Math.max(1, names.length)).padStart(2, '0');
+}
+
+/* 改名 / 排序：重建对象保持插入顺序；同时修正已存任务的 source 前缀 */
+function wbRenameCat(oldN, newN){
+  const rebuilt = {};
+  for(const k of wbCatNames()) rebuilt[k === oldN ? newN : k] = state.categories[k];
+  state.categories = rebuilt;
+  for(const t of (state.quadrantTasks || [])){
+    const s = t.source || '';
+    if(s === oldN || s.indexOf(oldN + '/') === 0) t.source = newN + s.slice(oldN.length);
+  }
+  if(currentModule === oldN) currentModule = newN;
+}
+function wbMoveCat(name, delta){
+  const names = wbCatNames(), i = names.indexOf(name), j = i + delta;
+  if(i < 0 || j < 0 || j >= names.length) return;
+  const tmp = names[i]; names[i] = names[j]; names[j] = tmp;
+  const rebuilt = {};
+  for(const n of names) rebuilt[n] = state.categories[n];
+  state.categories = rebuilt;
+}
+
+/* 设置页追加「分类管理」卡片：改名 / 新增同级 / 排序 / 删除 */
+function wbRenderCatManager(){
+  let box = $('wbCatManager');
+  if(!box){
+    const card = $('categorySettings') && $('categorySettings').closest('.settings-card');
+    if(!card) return;
+    const div = document.createElement('div');
+    div.className = 'settings-card';
+    div.innerHTML = '<h4>分类管理 · 自己定分类</h4><div id="wbCatManager"></div>';
+    card.parentNode.insertBefore(div, card.nextSibling);
+    box = $('wbCatManager');
+  }
+  const draft = box.querySelector('#wbNewCat') ? box.querySelector('#wbNewCat').value : '';
+  const names = wbCatNames();
+  let html = `<p class="desc" style="font-size:13px;color:var(--muted);margin:6px 0 12px;">
+    分类就是首页那几张卡片，也是「分类任务分布」图表的统计口径。可以随便改名、加同级、调顺序，例如改成 项目A / 项目B / 项目C。改名不会动里面的分组和任务；重要 / 紧急由任务自己勾选，不跟分类名绑定。
+  </p>`;
+  names.forEach(function(name, i){
+    const c = state.categories[name] || {};
+    const cnt = countLeafNodes(c.items || []);
+    if(wbEditingCat === name){
+      html += `<div class="set-row" style="flex-wrap:wrap;gap:6px;">
+        <input type="text" id="wbRenameInput" maxlength="12" value="${esc(name)}" style="flex:1;min-width:130px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card2);color:var(--text);">
+        <button class="btn small primary" data-wb-act="rename-ok" data-wb-name="${esc(name)}">保存</button>
+        <button class="btn small" data-wb-act="rename-cancel">取消</button>
+      </div>`;
+    } else {
+      html += `<div class="set-row" style="flex-wrap:wrap;gap:6px;">
+        <span class="k" style="flex:1;min-width:110px;">${esc(name)}<small>${cnt} 项 · ${c.enabled === false ? '已停用' : '启用中'}</small></span>
+        <button class="btn small" data-wb-act="rename" data-wb-name="${esc(name)}">改名</button>
+        <button class="btn small" data-wb-act="up" data-wb-name="${esc(name)}" ${i === 0 ? 'disabled' : ''}>↑</button>
+        <button class="btn small" data-wb-act="down" data-wb-name="${esc(name)}" ${i === names.length - 1 ? 'disabled' : ''}>↓</button>
+        <button class="btn small" data-wb-act="del" data-wb-name="${esc(name)}" ${names.length <= 1 ? 'disabled' : ''}>删除</button>
+      </div>`;
+    }
+  });
+  html += `<div class="set-actions" style="margin-top:12px;">
+      <input type="text" id="wbNewCat" maxlength="12" placeholder="新分类名，如 项目A" style="flex:1;min-width:140px;padding:8px 10px;border:1px solid var(--border);border-radius:8px;background:var(--card2);color:var(--text);">
+      <button class="btn small primary" data-wb-act="add">＋ 新增同级分类</button>
+    </div>
+    <div class="note-hint">改名 / 新增 / 排序会同步到首页卡片、底部导航、四象限来源和「分类任务分布」图。删除分类会连同它里面的分组一起删掉，删前建议先「导出 JSON 备份」。</div>`;
+  box.innerHTML = html;
+  const ni = box.querySelector('#wbNewCat'); if(ni && draft) ni.value = draft;
+  const ri = box.querySelector('#wbRenameInput'); if(ri){ ri.focus(); ri.select(); }
+}
+
+/* 包装原有渲染函数：保留原逻辑，只追加分类相关处理 */
+const _wbOrigRenderSettings = renderSettings;
+renderSettings = function(){
+  _wbOrigRenderSettings.apply(this, arguments);
+  wbRenderCatManager();
+};
+const _wbOrigRenderAll = renderAll;
+renderAll = function(){
+  _wbOrigRenderAll.apply(this, arguments);
+  wbSyncCatUI();
+};
+function wbSyncCatUI(){
+  if(!wbCatNames().length){ state.categories = { '我的分类': { enabled:true, items:[] } }; }
+  const names = wbCatNames();
+  if(names.indexOf(currentModule) < 0) currentModule = names[0] || '';
+  wbRenderNav();
+}
+
+/* 分类管理事件（独立 data-wb-act，避免与原有事件委托冲突） */
+document.addEventListener('click', function(e){
+  const el = e.target.closest ? e.target.closest('[data-wb-act]') : null;
+  if(!el || el.disabled) return;
+  const act = el.getAttribute('data-wb-act');
+  const name = el.getAttribute('data-wb-name') || '';
+  const names = wbCatNames();
+  const say = function(m){ try{ toast(m); }catch(err){} };
+  if(act === 'add'){
+    const v = wbValidCat($('wbNewCat') && $('wbNewCat').value);
+    if(!v){ say('分类名留空或含特殊字符，最多 12 个字'); return; }
+    if(names.indexOf(v) >= 0){ say('已经有同名分类了'); return; }
+    state.categories[v] = { enabled:true, items:[] };
+    wbEditingCat = ''; saveState(); renderAll(); say('已新增同级分类：' + v);
+  } else if(act === 'rename'){
+    wbEditingCat = name; wbRenderCatManager();
+  } else if(act === 'rename-cancel'){
+    wbEditingCat = ''; wbRenderCatManager();
+  } else if(act === 'rename-ok'){
+    const v = wbValidCat($('wbRenameInput') && $('wbRenameInput').value);
+    if(!v){ say('分类名留空或含特殊字符，最多 12 个字'); return; }
+    if(v !== name && names.indexOf(v) >= 0){ say('已经有同名分类了'); return; }
+    if(v !== name) wbRenameCat(name, v);
+    wbEditingCat = ''; saveState(); renderAll(); say('分类已改名：' + v);
+  } else if(act === 'up' || act === 'down'){
+    wbMoveCat(name, act === 'up' ? -1 : 1);
+    saveState(); renderAll();
+  } else if(act === 'del'){
+    if(names.length <= 1){ say('至少要留一个分类'); return; }
+    if(!confirm('删除分类「' + name + '」？\n它里面的分组和事项会一起删掉，建议先导出 JSON 备份。')) return;
+    delete state.categories[name];
+    if(currentModule === name) currentModule = wbCatNames()[0] || '';
+    wbEditingCat = ''; saveState(); renderAll(); say('已删除分类：' + name);
+  }
+});
+
 init();
 
 // ===== 横屏 JS 兜底：真机上 CSS:orientation 媒体查询受地址栏/DPR/手势区影响不可靠 ====
