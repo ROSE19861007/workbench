@@ -2,7 +2,7 @@
   "name": "我的工作台",
   "short_name": "工作台",
   "description": "个人工作台：四象限、模块资料、灵感手记",
-  "start_url": "./?v=1",
+  "start_url": "./?v=2",
   "scope": "./",
   "display": "standalone",
   "orientation": "any",
