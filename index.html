@@ -1050,7 +1050,7 @@ function isTouch(){ return ('ontouchstart' in window) || navigator.maxTouchPoint
 
 const STORAGE_KEY = 'wb_personal_workbench_v2';
 /* ===== P20-P24 (2026-11-09) 根治「界面消失」：令牌与界面解耦 ===== */
-const BUILD_NO = '20261113a';
+const BUILD_NO = '20261113b';
 const GOOD_KEY = 'wb_last_good_state_v1';
 const META_KEY = 'wb_local_meta_v1';
 const PREV_KEY = 'wb_prev_state_v1';
@@ -3608,9 +3608,10 @@ renderEntryCards = function(){
 };
 
 /* 分类任务分布：只统计并显示用户自己的分类（学习/项目/家庭，或改名/新增后的分类）。
-   P28（2026-11-13）：四象限里来源为「事务」的任务属于「事务处理器」模块，
-   不是分类，既不进图例、也不画环；中心「任务总数」仍按全部任务计，
-   与 P25 之前的旧版口径完全一致。图例高度随分类数增长。 */
+   P28（2026-11-13）：四象限里来源为「事务」的任务属于「事务处理器」模块，不是分类，
+   既不进图例、也不单独成项。
+   P29（2026-11-13）：占比分母改为「已归入分类的任务数」，各类占比合计 100%、环画满整圈；
+   中心显示已分类数，底部小字注明未归入分类的任务条数（数据一条不删）。 */
 renderQuadrantDist = function(){
   const box = $('chartQuadrantDist');
   if(!box) return;
@@ -3627,32 +3628,48 @@ renderQuadrantDist = function(){
     if(hit) cc[hit]++;   /* 未匹配到分类的任务不计入任何一类，也不单独成项 */
   }
   const defs = names.map(function(n){ return { name:n, color:wbCatColor(n) }; });
-  const total = tasks.length;
-  const W = 680, H = Math.max(150, 30 + defs.length * 30 + 12);
+  const allTotal = tasks.length;
+  const catTotal = defs.reduce(function(s,d){ return s + cc[d.name]; }, 0);
+  const otherCnt = Math.max(0, allTotal - catTotal);
+  const W = 680, H = Math.max(170, 30 + defs.length * 30 + 34);
   const cx = 90, cy = 75, r = 52, C = 2 * Math.PI * r;
+  /* P29：以已分类数为分母，最后一段补齐整圈，环上不留空白 */
   let segs = '';
-  if(total === 0){
+  if(catTotal === 0){
     segs = `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="var(--card2)" stroke-width="22"/>`;
   } else {
+    const active = defs.filter(function(d){ return cc[d.name] > 0; });
     let offset = 0;
-    for(const d of defs){
-      const frac = cc[d.name] / total;
-      if(frac <= 0) continue;
-      const len = frac * C;
-      segs += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${d.color}" stroke-width="22" stroke-dasharray="${len} ${C - len}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})"/>`;
+    active.forEach(function(d, i){
+      const len = (i === active.length - 1) ? (C - offset) : cc[d.name] / catTotal * C;
+      segs += `<circle cx="${cx}" cy="${cy}" r="${r}" fill="none" stroke="${d.color}" stroke-width="22" stroke-dasharray="${len} ${Math.max(0.01, C - len)}" stroke-dashoffset="${-offset}" transform="rotate(-90 ${cx} ${cy})"/>`;
       offset += len;
-    }
+    });
   }
+  /* P29：百分比四舍五入，最后一项补齐到整数 100%，避免 99% / 101% */
+  const pcts = {};
+  let pctAcc = 0, lastKey = '';
+  defs.forEach(function(d){
+    const p = catTotal > 0 ? Math.round(cc[d.name] / catTotal * 100) : 0;
+    pcts[d.name] = p; pctAcc += p;
+    if(cc[d.name] > 0) lastKey = d.name;
+  });
+  if(lastKey && catTotal > 0) pcts[lastKey] = 100 - (pctAcc - pcts[lastKey]);
   let legend = '', ly = 24;
   for(const d of defs){
     legend += `<rect x="210" y="${ly}" width="12" height="12" rx="3" fill="${d.color}"/>`;
-    legend += `<text x="232" y="${ly + 11}" font-size="13" fill="var(--text)">${esc(d.name)}：${cc[d.name]}</text>`;
+    legend += `<text x="232" y="${ly + 11}" font-size="13" fill="var(--text)">${esc(d.name)}：${cc[d.name]} · ${pcts[d.name]}%</text>`;
     ly += 30;
   }
+  const note = defs.length === 0 ? '尚未创建分类'
+    : (otherCnt > 0
+       ? `另有 ${otherCnt} 条未归入分类的任务（全部 ${allTotal} 条），未计入占比`
+       : `全部 ${allTotal} 条任务均已归入分类`);
   box.innerHTML = `<svg viewBox="0 0 ${W} ${H}" font-family="-apple-system,'PingFang SC','Microsoft YaHei',sans-serif">${segs}
-    <text x="${cx}" y="${cy - 4}" font-size="20" font-weight="700" fill="var(--text)" text-anchor="middle">${total}</text>
-    <text x="${cx}" y="${cy + 16}" font-size="11" fill="var(--muted)" text-anchor="middle">任务总数</text>
-    ${legend}</svg>`;
+    <text x="${cx}" y="${cy - 4}" font-size="20" font-weight="700" fill="var(--text)" text-anchor="middle">${catTotal}</text>
+    <text x="${cx}" y="${cy + 16}" font-size="11" fill="var(--muted)" text-anchor="middle">已分类任务</text>
+    ${legend}
+    <text x="210" y="${ly + 8}" font-size="11" fill="var(--muted)">${note}</text></svg>`;
 };
 
 /* 底部导航：按当前分类重建，保留四象限等其它按钮 */
