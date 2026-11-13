@@ -1050,7 +1050,7 @@ function isTouch(){ return ('ontouchstart' in window) || navigator.maxTouchPoint
 
 const STORAGE_KEY = 'wb_personal_workbench_v2';
 /* ===== P20-P24 (2026-11-09) 根治「界面消失」：令牌与界面解耦 ===== */
-const BUILD_NO = '20261112a';
+const BUILD_NO = '20261113a';
 const GOOD_KEY = 'wb_last_good_state_v1';
 const META_KEY = 'wb_local_meta_v1';
 const PREV_KEY = 'wb_prev_state_v1';
@@ -3550,7 +3550,6 @@ async function init(){
 /* ===== P25：顶层分类完全自定义（不写死「学习/项目/家庭」） ===== */
 const WB_CAT_PALETTE = ['#7a9a6a','#6a8fa8','#c47a5a','#b98b3a','#8b7bb8','#5f9e9b','#b06a86','#8a8070','#6b8f5e','#a87b52'];
 const WB_CAT_LEGACY  = { '学习':'learn', '项目':'project', '家庭':'family' };
-const WB_OTHER = '事务处理器';
 let wbEditingCat = '';
 
 function wbCatNames(){ return Object.keys(state.categories || {}); }
@@ -3608,7 +3607,10 @@ renderEntryCards = function(){
   }).join('');
 };
 
-/* 分类任务分布：分类名、数量、颜色全部动态，图例高度随分类数增长 */
+/* 分类任务分布：只统计并显示用户自己的分类（学习/项目/家庭，或改名/新增后的分类）。
+   P28（2026-11-13）：四象限里来源为「事务」的任务属于「事务处理器」模块，
+   不是分类，既不进图例、也不画环；中心「任务总数」仍按全部任务计，
+   与 P25 之前的旧版口径完全一致。图例高度随分类数增长。 */
 renderQuadrantDist = function(){
   const box = $('chartQuadrantDist');
   if(!box) return;
@@ -3616,17 +3618,15 @@ renderQuadrantDist = function(){
   const names = wbCatNames();
   const cc = {};
   names.forEach(function(n){ cc[n] = 0; });
-  cc[WB_OTHER] = 0;
   for(const t of tasks){
     const src = t.source || '';
     let hit = '';
     for(const n of names){
       if(src === n || src.indexOf(n + '/') === 0){ if(n.length > hit.length) hit = n; }
     }
-    cc[hit || WB_OTHER]++;
+    if(hit) cc[hit]++;   /* 未匹配到分类的任务不计入任何一类，也不单独成项 */
   }
   const defs = names.map(function(n){ return { name:n, color:wbCatColor(n) }; });
-  defs.push({ name:WB_OTHER, color:(state.profile && state.profile.accent) || '#b93b2a' });
   const total = tasks.length;
   const W = 680, H = Math.max(150, 30 + defs.length * 30 + 12);
   const cx = 90, cy = 75, r = 52, C = 2 * Math.PI * r;
