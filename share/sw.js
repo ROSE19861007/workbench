@@ -1,7 +1,7 @@
 /* 工作台 · 分享版 Service Worker
    网络优先 + 离线兜底：永远先取线上最新版，断网时才用上次缓存。
    只管本站目录，跨域的云同步请求（api.github.com）完全不拦。 */
-const CACHE = 'wb-share-v1';
+const CACHE = 'wb-share-v2';
 self.addEventListener('install', function(e){ self.skipWaiting(); });
 self.addEventListener('activate', function(e){
   e.waitUntil(
