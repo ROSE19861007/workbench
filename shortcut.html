@@ -1,0 +1,47 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#f4eee6">
+  <title>工作台入口</title>
+  <link rel="icon" type="image/png" href="./icon-192.png">
+  <!-- Keep this page a plain bookmark target: no manifest, install prompt,
+       service-worker registration or automatic redirect. Edge's installed
+       workbench entry disappears after reboot on the reported Redmi K40.
+       This optional route requires on-device verification; it is not a fix
+       for the browser/launcher. The same-tab, same-origin link preserves
+       the existing browser's workbench storage and synchronization settings.
+       Do not copy index.html or change the production manifest to implement
+       this workaround. -->
+  <style>
+    * { box-sizing: border-box; }
+    body { margin: 0; min-height: 100vh; padding: 48px 20px;
+      background: #f4eee6; color: #40352d;
+      font-family: system-ui, -apple-system, "Microsoft YaHei", sans-serif; }
+    main { max-width: 440px; margin: 8vh auto 0; padding: 32px 24px;
+      background: #fffaf3; border: 1px solid #d9cbbb; border-radius: 24px; }
+    img { display: block; width: 72px; height: 72px; border-radius: 18px; }
+    h1 { margin: 24px 0 12px; font-size: 28px; }
+    p { line-height: 1.8; }
+    .open { display: block; padding: 16px; margin: 28px 0 20px;
+      border-radius: 12px; background: #7c2926; color: white;
+      text-align: center; text-decoration: none; font-weight: 650; }
+    .open:focus-visible { outline: 3px solid #40352d; outline-offset: 4px; }
+    .help { font-size: 14px; color: #66574b; }
+    footer { margin-top: 24px; padding-top: 18px; border-top: 1px solid #e6dace; }
+  </style>
+</head>
+<body>
+  <main>
+    <img src="./icon-192.png" alt="" width="72" height="72">
+    <h1>个人工作台</h1>
+    <p>从这里进入你的工作台。</p>
+    <a class="open" href="./">打开工作台</a>
+    <footer class="help">
+      <p><strong>首次添加：</strong>先停留在本页，通过浏览器菜单选择“添加到桌面”或“创建快捷方式”，再打开工作台。</p>
+      <p>以后点击桌面上的“工作台入口”，再点“打开工作台”即可。</p>
+    </footer>
+  </main>
+</body>
+</html>
